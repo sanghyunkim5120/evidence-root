@@ -117,15 +117,6 @@ def required_keys_configured() -> bool:
     return all(is_configured(k) for k in REQUIRED_KEYS)
 
 
-def get_analysis_mode() -> str:
-    try:
-        import streamlit as st
-
-        return st.session_state.get("analysis_mode", os.environ.get("ANALYSIS_MODE", "thorough"))
-    except Exception:
-        return os.environ.get("ANALYSIS_MODE", "thorough")
-
-
 def get_admin_password() -> Optional[str]:
     return os.environ.get("APP_ADMIN_PASSWORD") or None
 

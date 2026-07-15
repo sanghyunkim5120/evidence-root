@@ -23,15 +23,6 @@ def main() -> None:
         nav = st.radio("메뉴", ["정보 검증", "API 설정"], index=["정보 검증", "API 설정"].index(st.session_state["_nav"]))
         st.session_state["_nav"] = nav
 
-        st.markdown("---")
-        st.markdown("#### 분석 모드")
-        mode_label = st.radio(
-            "분석 모드", ["정밀 분석", "빠른 분석"],
-            index=0 if st.session_state.get("analysis_mode", "thorough") == "thorough" else 1,
-            label_visibility="collapsed",
-        )
-        st.session_state["analysis_mode"] = "thorough" if mode_label == "정밀 분석" else "fast"
-
     if st.session_state["_nav"] == "정보 검증":
         render_verification_page()
     else:

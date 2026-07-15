@@ -26,16 +26,12 @@ from . import (
 
 logger = logging.getLogger("evidence_root.services.analysis_pipeline")
 
-MODE_LIMITS = {
-    "fast": {"results_per_query": 10, "max_raw_results": 40, "max_fetched_documents": 20, "max_final_evidence": 8},
-    "thorough": {"results_per_query": 20, "max_raw_results": 120, "max_fetched_documents": 50, "max_final_evidence": 15},
-}
+LIMITS = {"results_per_query": 10, "max_raw_results": 40, "max_fetched_documents": 20, "max_final_evidence": 8}
 
 
 def run_pipeline(
     input_text: str,
     registry: ProviderRegistry,
-    mode: str = "thorough",
     on_step: Callable[[str], None] | None = None,
 ) -> AnalysisResult:
     def step(name: str) -> None:
@@ -43,8 +39,8 @@ def run_pipeline(
         if on_step:
             on_step(name)
 
-    limits = MODE_LIMITS.get(mode, MODE_LIMITS["thorough"])
-    process_log: dict = {"mode": mode}
+    limits = LIMITS
+    process_log: dict = {}
     llm = registry.text_llm()
 
     step("주장 추출")
@@ -60,7 +56,7 @@ def run_pipeline(
 
     step("검색 계획")
     for claim in claims:
-        queries = search_planner.build_queries(claim, mode)
+        queries = search_planner.build_queries(claim)
         process_log.setdefault("queries", {})[claim.claim_id] = queries
 
         step("공식 자료 확인")
@@ -98,7 +94,7 @@ def run_pipeline(
         process_log.setdefault("body_fetch_failures", {})[claim.claim_id] = len(fetch_targets) - fetched_ok
 
         pre_relevance_count = len(fetch_targets)
-        relevant = relevance_filter.prefilter_relevance(claim, fetch_targets, threshold=0.2)
+        relevant = relevance_filter.prefilter_relevance(claim, fetch_targets, threshold=0.32)
         relevant = relevance_filter.gemini_relevance_check(claim, relevant, llm)
         process_log.setdefault("relevance_excluded", {})[claim.claim_id] = pre_relevance_count - len(relevant)
 

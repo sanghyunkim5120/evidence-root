@@ -15,7 +15,6 @@ logger = logging.getLogger("evidence_root.providers.groq")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 # 8b 모델은 하루 토큰 한도가 70b 모델(10만)보다 훨씬 넉넉해(50만) 기본값으로 사용한다.
 DEFAULT_MODEL = "llama-3.1-8b-instant"
-DEFAULT_VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
 _RETRY_DELAY_RE = re.compile(r"try again in ([\d.]+)s", re.IGNORECASE)
 _MAX_RATE_LIMIT_RETRIES = 2
@@ -28,7 +27,6 @@ class GroqProvider(BaseProvider, TextLLMProvider):
     def __init__(self) -> None:
         self.api_key = config.resolve_secret("GROQ_API_KEY")
         self.model_name = config.resolve_secret("GROQ_MODEL") or DEFAULT_MODEL
-        self.vision_model_name = DEFAULT_VISION_MODEL
 
     def is_configured(self) -> bool:
         return bool(self.api_key)
@@ -96,36 +94,6 @@ class GroqProvider(BaseProvider, TextLLMProvider):
             system=system,
         )
         return parse_json_response(text)
-
-    def extract_text_from_image(self, image_bytes: bytes) -> str | None:
-        """비전 모델로 이미지 속 텍스트를 그대로 추출한다 (OCR)."""
-        if not self.is_configured():
-            return None
-        import base64
-
-        data_url = "data:image/png;base64," + base64.b64encode(image_bytes).decode("ascii")
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "이 이미지에 있는 모든 텍스트를 그대로 추출해줘. 설명 없이 텍스트만 출력해."},
-                    {"type": "image_url", "image_url": {"url": data_url}},
-                ],
-            }
-        ]
-        try:
-            with new_client() as client:
-                resp = request_json(
-                    client, "POST", GROQ_URL, headers=self._headers(),
-                    json={"model": self.vision_model_name, "messages": messages, "temperature": 0.1, "max_tokens": 2000},
-                )
-            if resp.status_code == 200:
-                return resp.json()["choices"][0]["message"]["content"]
-            logger.warning("Groq OCR 실패: status=%s body=%s", resp.status_code, resp.text[:300])
-            return None
-        except Exception as exc:
-            logger.warning("Groq OCR 예외: %s", exc)
-            return None
 
 
 def _classify_groq_error(status_code: int, body: str) -> tuple[bool, ConnectionErrorKind, str]:

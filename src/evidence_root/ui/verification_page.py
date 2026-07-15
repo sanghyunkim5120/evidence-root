@@ -10,11 +10,6 @@ from ..services import input_processor
 from ..services.analysis_pipeline import run_pipeline
 from . import components
 
-STEP_LABELS = [
-    "입력 분석", "주장 추출", "검색 계획", "자료 검색", "공식 자료 확인",
-    "본문 수집", "중복·원출처 분석", "교차검증", "결과 생성",
-]
-
 
 def _render_missing_config_notice() -> None:
     st.warning("API 설정이 필요합니다. 필수 API(Groq, Naver 검색)를 설정해야 근거를 검색·분석할 수 있습니다.")
@@ -35,7 +30,7 @@ def _run_analysis(input_text: str) -> AnalysisResult | None:
         status_box.write(f"진행 단계: {name}")
 
     try:
-        result = run_pipeline(input_text, registry, mode=config.get_analysis_mode(), on_step=on_step)
+        result = run_pipeline(input_text, registry, on_step=on_step)
         status_box.update(label="분석 완료", state="complete")
         return result
     except Exception as exc:
@@ -83,51 +78,11 @@ def render_verification_page() -> None:
     if not config.required_keys_configured():
         _render_missing_config_notice()
 
-    tab_text, tab_link, tab_image = st.tabs(["문장으로 확인", "링크로 확인", "이미지로 확인"])
-
+    text_value = st.text_area("확인하고 싶은 문장이나 게시물 내용을 입력하세요", height=150, key="_input_text")
     input_text: str | None = None
-
-    with tab_text:
-        text_value = st.text_area("확인하고 싶은 문장이나 게시물 내용을 입력하세요", height=150, key="_input_text")
-        if st.button("근거 확인 시작", key="_start_text"):
-            bundle = input_processor.process_text_input(text_value)
-            input_text = bundle.input_text
-
-    with tab_link:
-        url_value = st.text_input("뉴스/블로그/웹문서/SNS 링크를 입력하세요", key="_input_url")
-        if st.button("근거 확인 시작", key="_start_url"):
-            with st.spinner("본문을 수집하는 중..."):
-                bundle = input_processor.process_url_input(url_value)
-            if not bundle.body_available:
-                st.info("본문 미확보: 메타데이터와 검색 결과 설명만 사용합니다.")
-            input_text = bundle.input_text
-
-    with tab_image:
-        uploaded = st.file_uploader("스크린샷을 업로드하세요", type=["png", "jpg", "jpeg"], key="_input_image")
-        corrected_text = None
-        if uploaded is not None:
-            st.image(uploaded, width=300)
-            if st.button("텍스트 추출(OCR)", key="_ocr_button"):
-                registry = get_registry()
-                with st.spinner("이미지에서 텍스트를 추출하는 중..."):
-                    bundle = input_processor.process_image_input(
-                        uploaded.getvalue(), None, registry.get("gemini"), registry.get("groq")
-                    )
-                st.session_state["_ocr_result"] = bundle.input_text
-                st.session_state["_ocr_notes"] = bundle.notes
-
-            if "_ocr_result" in st.session_state:
-                corrected_text = st.text_area(
-                    "OCR 결과를 확인하고 필요하면 수정하세요", value=st.session_state["_ocr_result"], height=150, key="_ocr_edit"
-                )
-                for note in st.session_state.get("_ocr_notes", []):
-                    st.caption(note)
-
-        if st.button("근거 확인 시작", key="_start_image"):
-            if uploaded is None or corrected_text is None:
-                st.warning("먼저 이미지를 업로드하고 텍스트를 추출하세요.")
-            else:
-                input_text = corrected_text
+    if st.button("근거 확인 시작", key="_start_text"):
+        bundle = input_processor.process_text_input(text_value)
+        input_text = bundle.input_text
 
     if input_text:
         # 새 분석을 시작하면 이전 질문의 결과를 먼저 지운다. 그렇지 않으면 이번 분석이 실패했을 때

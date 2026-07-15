@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from ..schemas import Claim
 
-MODE_QUERY_COUNTS = {"fast": 4, "thorough": 7}
+TARGET_QUERY_COUNT = 4
 
 
-def build_queries(claim: Claim, mode: str = "thorough") -> list[str]:
-    target = MODE_QUERY_COUNTS.get(mode, 7)
+def build_queries(claim: Claim) -> list[str]:
+    target = TARGET_QUERY_COUNT
     keywords = " ".join(claim.keywords[:5]) or claim.claim_text[:40]
     orgs = claim.organizations
     dates = " ".join(claim.dates[:2])
