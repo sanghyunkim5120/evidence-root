@@ -130,9 +130,14 @@ def render_verification_page() -> None:
                 input_text = corrected_text
 
     if input_text:
+        # 새 분석을 시작하면 이전 질문의 결과를 먼저 지운다. 그렇지 않으면 이번 분석이 실패했을 때
+        # 화면에 엉뚱하게 이전 질문의 결과가 남아 마치 그게 새 질문의 답인 것처럼 보이게 된다.
+        st.session_state.pop("_last_result", None)
         result = _run_analysis(input_text)
         if result:
             st.session_state["_last_result"] = result
+        else:
+            st.error("이번 분석은 실패했습니다. 위 오류를 확인하고 다시 시도해주세요.")
 
     if st.session_state.get("_last_result"):
         st.divider()
