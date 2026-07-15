@@ -1,0 +1,37 @@
+# 검색 목적 템플릿과 자료유형 정의. claim의 entities/keywords 등을 채워넣어 동적으로 사용한다.
+
+query_purposes:
+  - core_event        # 핵심 사건: "{keywords}"
+  - exact_phrase       # 정확 문구: "\"{quote}\""
+  - official_source    # 공식 발표/원자료: "{organization} 공식 발표 {keywords}"
+  - independent_news   # 독립 뉴스: "{keywords} 보도"
+  - correction         # 반박/정정/해명: "{keywords} 반박 OR 정정 OR 해명"
+  - fact_check         # 기존 팩트체크: "{keywords} 팩트체크"
+  - date_location       # 날짜/장소: "{keywords} {date} {location}"
+  - statistics_source   # 통계 원본: "{keywords} 통계 원자료"
+  - alt_name            # 영문명/다른 명칭: "{alt_keywords}"
+
+source_types:
+  - official_statement
+  - official_statistics
+  - legal_document
+  - corporate_disclosure
+  - academic_or_research
+  - original_reporting
+  - news_report
+  - news_republication
+  - fact_check
+  - social_post
+  - blog
+  - community
+  - image_match
+  - unknown
+
+official_org_categories:
+  - 정부·지자체·공공기관
+  - 경찰·소방·군·법원
+  - 통계·공공데이터
+  - 판결·법령·국회 자료
+  - 기업 공시·공식 발표
+  - 연구기관·대학
+  - 국제기구·외국 정부기관

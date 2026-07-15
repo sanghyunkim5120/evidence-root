@@ -1,0 +1,12 @@
+.env
+.streamlit/secrets.toml
+data/encrypted_secrets.json
+data/local_secret.key
+google_credentials.json
+*.db
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+data/
+*.log
