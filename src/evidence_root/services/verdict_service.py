@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 from ..schemas import Checkability, Claim, ClaimScore, ClaimVerdict, VerdictStatus
+from .causal_reasoner import CausalAssessment
 from .comparison_counter import ComparisonEstimate
 
 _COMPARISON_MARGIN = 1.3  # 이 배율 이상 차이나야 유의미한 우열로 본다
 
 
 def decide_verdict(
-    claim: Claim, score: ClaimScore, comparison_estimate: ComparisonEstimate | None = None
+    claim: Claim,
+    score: ClaimScore,
+    comparison_estimate: ComparisonEstimate | None = None,
+    causal_assessment: CausalAssessment | None = None,
 ) -> ClaimVerdict:
     if claim.checkability in (Checkability.opinion, Checkability.unverifiable):
         status = VerdictStatus.unverifiable
@@ -37,6 +41,17 @@ def decide_verdict(
         else:
             status = VerdictStatus.mixed
 
+    # 인과관계 주장은 기사에서 직접 확인되는 경우가 드물어, 뉴스 근거가 부족하면 전제 사실을 바탕으로 한
+    # LLM 해석으로 보완한다. 이는 새로운 사실 확인이 아니라 해석이므로 evidence-based 판정을 대체하지
+    # 않고, 근거가 아예 없을 때만 참고 판정으로 사용한다.
+    if causal_assessment is not None and status == VerdictStatus.insufficient_evidence:
+        if not causal_assessment.premises_confirmed:
+            status = VerdictStatus.unverifiable
+        elif causal_assessment.plausible is True:
+            status = VerdictStatus.partially_supported
+        elif causal_assessment.plausible is False:
+            status = VerdictStatus.likely_false
+
     confidence_label = _confidence_label(score)
     verification_scope = (
         f"독립 지지 근거 {score.independent_support_count}건, 독립 반박 근거 {score.independent_refute_count}건, "
@@ -59,6 +74,8 @@ def decide_verdict(
             f"{comparison_estimate.basis} 비교(근사 지표): '{comparison_estimate.entity_a}' {comparison_estimate.count_a:,}건 vs "
             f"'{comparison_estimate.entity_b}' {comparison_estimate.count_b:,}건. {comparison_estimate.ratio_label}"
         )
+    if causal_assessment is not None:
+        confirmed_points.append(f"[해석, 직접 근거 아님] {causal_assessment.reasoning}")
 
     reasoning = _build_reasoning(status, score)
     if comparison_estimate is not None:
@@ -66,9 +83,14 @@ def decide_verdict(
             f" 참고로 {comparison_estimate.basis}은 '{comparison_estimate.entity_a}' {comparison_estimate.count_a:,}건, "
             f"'{comparison_estimate.entity_b}' {comparison_estimate.count_b:,}건으로 집계되었습니다 (근사 지표)."
         )
+    if causal_assessment is not None:
+        reasoning += f" 인과관계 자체는 뉴스에서 직접 확인되지 않아, 전제 사실을 바탕으로 한 해석을 참고했습니다: {causal_assessment.reasoning}"
+
     limitations = list(insufficient_points)
     if comparison_estimate is not None:
         limitations.append(f"{comparison_estimate.basis}은 실제 대중 관심도를 완전히 대변하지 않는 근사 지표입니다.")
+    if causal_assessment is not None:
+        limitations.append("인과관계 판단은 개별 사실 확인을 바탕으로 한 LLM 해석이며, 인과관계를 직접 서술한 자료로 확인된 것이 아닙니다.")
     if claim.checkability != Checkability.checkable:
         limitations.append(f"이 주장은 checkability={claim.checkability.value}로, 사실 여부보다 해석의 영역일 수 있습니다.")
 

@@ -7,6 +7,7 @@ from typing import Callable
 from ..provider_registry import ProviderRegistry
 from ..schemas import AnalysisResult, ClaimVerdict, Evidence, StanceResult
 from . import (
+    causal_reasoner,
     claim_extractor,
     comparison_counter,
     deduplicator,
@@ -117,7 +118,11 @@ def run_pipeline(
         stances_by_claim_id[claim.claim_id] = claim_stances
 
     step("결과 생성")
-    for claim in claims:
+    verdicts_by_claim_id: dict[str, ClaimVerdict] = {}
+    # 인과관계 주장은 전제가 되는 개별 사실 주장의 판정이 먼저 나와 있어야 해석할 수 있으므로 뒤로 미룬다.
+    ordered_claims = [c for c in claims if c.claim_type != "causal"] + [c for c in claims if c.claim_type == "causal"]
+
+    for claim in ordered_claims:
         relevant = evidence_by_claim_id.get(claim.claim_id, [])
         claim_stances = stances_by_claim_id.get(claim.claim_id, [])
         score = scoring_service.compute_score(claim, relevant, claim_stances)
@@ -135,8 +140,24 @@ def run_pipeline(
                 "count_b": comparison_estimate.count_b,
                 "basis": comparison_estimate.basis,
             }
-        verdict = verdict_service.decide_verdict(claim, score, comparison_estimate)
+
+        # 인과관계 주장은 기사에서 직접 확인되지 않는 경우가 많아, 전제 사실(위에서 먼저 판정된 개별
+        # 사건 주장)을 바탕으로 한 LLM 해석으로 보완한다.
+        causal_assessment = causal_reasoner.evaluate_causal_claim(claim, claims, verdicts_by_claim_id, llm)
+        if causal_assessment is not None:
+            process_log.setdefault("causal_assessments", {})[claim.claim_id] = {
+                "reasoning": causal_assessment.reasoning,
+                "plausible": causal_assessment.plausible,
+                "premises_confirmed": causal_assessment.premises_confirmed,
+            }
+
+        verdict = verdict_service.decide_verdict(claim, score, comparison_estimate, causal_assessment)
+        verdicts_by_claim_id[claim.claim_id] = verdict
         all_verdicts.append(verdict)
+
+    claim_order = {c.claim_id: idx for idx, c in enumerate(claims)}
+    all_verdicts.sort(key=lambda v: claim_order.get(v.claim_id, 0))
+
     overall_summary = summary_generator.generate_summary(all_verdicts, llm)
     followups = followup_generator.generate_followups(all_verdicts, llm)
 

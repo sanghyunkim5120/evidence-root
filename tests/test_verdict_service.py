@@ -1,4 +1,5 @@
 from evidence_root.schemas import Claim, ClaimScore
+from evidence_root.services.causal_reasoner import CausalAssessment
 from evidence_root.services.comparison_counter import ComparisonEstimate
 from evidence_root.services.verdict_service import decide_verdict
 
@@ -36,3 +37,25 @@ def test_comparison_estimate_stays_mixed_when_close():
 def test_without_comparison_estimate_falls_back_to_insufficient():
     verdict = decide_verdict(_claim(), _empty_score(), None)
     assert verdict.status.value == "insufficient_evidence"
+
+
+def _causal_claim():
+    return Claim(
+        claim_id="C3", claim_text="A가 B에 영향을 줬다", claim_type="causal",
+        checkability="partially_checkable", entities=["A", "B"],
+    )
+
+
+def test_causal_claim_with_unconfirmed_premises_becomes_unverifiable():
+    """전제가 되는 개별 사건이 확인되지 않았다면(가짜 정보 등), 인과관계는 '부분적으로 지지됨'이 아니라
+    '판단 불가'로 나와야 한다 — 근거 없는 사건들 사이의 인과관계를 지지된 것처럼 보이면 안 된다."""
+    assessment = CausalAssessment(reasoning="전제 사건이 확인되지 않았습니다.", plausible=None, premises_confirmed=False)
+    verdict = decide_verdict(_causal_claim(), _empty_score(), None, assessment)
+    assert verdict.status.value == "unverifiable"
+
+
+def test_causal_claim_with_confirmed_premises_and_plausible_interpretation():
+    assessment = CausalAssessment(reasoning="두 사건 시점상 연결이 합리적입니다.", plausible=True, premises_confirmed=True)
+    verdict = decide_verdict(_causal_claim(), _empty_score(), None, assessment)
+    assert verdict.status.value == "partially_supported"
+    assert any("해석" in p for p in verdict.confirmed_points)
