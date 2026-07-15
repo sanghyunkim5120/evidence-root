@@ -16,6 +16,16 @@ def decide_verdict(
 ) -> ClaimVerdict:
     if claim.checkability in (Checkability.opinion, Checkability.unverifiable):
         status = VerdictStatus.unverifiable
+    elif comparison_estimate is not None:
+        # 비교 주장은 "더 많은 관심을 받았다" 류라 비교 주장 자체에 대한 일반 검색 결과는 잡음이 많고
+        # (양쪽 이야기가 섞여 상충으로 보이기 쉽다), 그보다 훨씬 신뢰도 높은 "검증된 독립 근거 수 비교"가
+        # 있으면 그걸 우선한다. 즉 비교 주장은 근거 검색 잡음보다 이 수치를 최종 판단 기준으로 삼는다.
+        if comparison_estimate.count_a > comparison_estimate.count_b * _COMPARISON_MARGIN:
+            status = VerdictStatus.partially_supported
+        elif comparison_estimate.count_b > comparison_estimate.count_a * _COMPARISON_MARGIN:
+            status = VerdictStatus.likely_false
+        else:
+            status = VerdictStatus.mixed
     elif score.independent_support_count == 0 and score.independent_refute_count == 0:
         status = VerdictStatus.insufficient_evidence
     elif score.source_conflict >= 0.4:
@@ -32,14 +42,6 @@ def decide_verdict(
         status = VerdictStatus.partially_supported
     else:
         status = VerdictStatus.insufficient_evidence
-
-    if comparison_estimate is not None and status == VerdictStatus.insufficient_evidence:
-        if comparison_estimate.count_a > comparison_estimate.count_b * _COMPARISON_MARGIN:
-            status = VerdictStatus.partially_supported
-        elif comparison_estimate.count_b > comparison_estimate.count_a * _COMPARISON_MARGIN:
-            status = VerdictStatus.likely_false
-        else:
-            status = VerdictStatus.mixed
 
     # 인과관계 주장은 기사에서 직접 확인되는 경우가 드물어, 뉴스 근거가 부족하면 전제 사실을 바탕으로 한
     # LLM 해석으로 보완한다. 이는 새로운 사실 확인이 아니라 해석이므로 evidence-based 판정을 대체하지

@@ -39,6 +39,18 @@ def test_without_comparison_estimate_falls_back_to_insufficient():
     assert verdict.status.value == "insufficient_evidence"
 
 
+def test_comparison_estimate_wins_over_noisy_own_evidence_conflict():
+    """비교 주장 자체를 검색했을 때 잡음 섞인 결과로 상충(source_conflict)이 높게 나와도, 훨씬 신뢰도
+    높은 '검증된 독립 근거 수 비교'가 명확한 차이를 보이면 그걸 최종 판정 기준으로 써야 한다."""
+    noisy_score = ClaimScore(
+        claim_id="C1", independent_support_count=1, independent_refute_count=1,
+        support_strength=0.5, refute_strength=0.5, source_conflict=0.5,
+    )
+    estimate = ComparisonEstimate(entity_a="늑구", count_a=8, entity_b="예비군", count_b=5, basis="검증된 독립 근거 수")
+    verdict = decide_verdict(_claim(), noisy_score, estimate)
+    assert verdict.status.value == "partially_supported"
+
+
 def _causal_claim():
     return Claim(
         claim_id="C3", claim_text="A가 B에 영향을 줬다", claim_type="causal",
