@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from ..schemas import Claim, ClaimScore, Evidence, Stance, StanceResult
+from ..utils.date_parsing import recency_weight
 
 _CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "scoring.yaml"
 _config_cache: dict | None = None
@@ -41,7 +42,8 @@ def compute_score(claim: Claim, evidences: list[Evidence], stances: list[StanceR
         occurrence = cluster_seen.get(cluster_id, 0)
         cluster_seen[cluster_id] = occurrence + 1
         independence_factor = decay**occurrence
-        contribution = base_weight * s.confidence * independence_factor
+        recency_factor = recency_weight(evidence.published_at)
+        contribution = base_weight * s.confidence * independence_factor * recency_factor
 
         if s.stance == Stance.support:
             support_strength += contribution
