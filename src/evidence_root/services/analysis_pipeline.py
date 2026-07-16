@@ -94,7 +94,7 @@ def run_pipeline(
         process_log.setdefault("body_fetch_failures", {})[claim.claim_id] = len(fetch_targets) - fetched_ok
 
         pre_relevance_count = len(fetch_targets)
-        relevant = relevance_filter.prefilter_relevance(claim, fetch_targets, threshold=0.32)
+        relevant = relevance_filter.prefilter_relevance(claim, fetch_targets, threshold=0.25)
         relevant = relevance_filter.gemini_relevance_check(claim, relevant, llm)
         process_log.setdefault("relevance_excluded", {})[claim.claim_id] = pre_relevance_count - len(relevant)
 

@@ -40,7 +40,7 @@ def _run_analysis(input_text: str) -> AnalysisResult | None:
 
 
 def _render_results(result: AnalysisResult) -> None:
-    tabs = st.tabs(["종합 분석", "세부 주장", "근거 자료", "출처 관계"])
+    tabs = st.tabs(["종합 분석", "세부 주장", "근거 자료"])
 
     with tabs[0]:
         st.subheader("종합 분석")
@@ -65,10 +65,6 @@ def _render_results(result: AnalysisResult) -> None:
             st.info("수집된 근거 자료가 없습니다.")
         for evidence in result.evidences:
             components.render_evidence_card(evidence, result.stances)
-
-    with tabs[3]:
-        st.subheader("출처 관계")
-        components.render_provenance_graph(result)
 
 
 def render_verification_page() -> None:
