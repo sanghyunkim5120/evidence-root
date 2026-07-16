@@ -55,15 +55,17 @@ def run_pipeline(
     stances_by_claim_id: dict[str, list[StanceResult]] = {}
 
     step("검색 계획")
-    for claim in claims:
+    total_claims = len(claims)
+    for idx, claim in enumerate(claims, start=1):
+        prefix = f"[주장 {idx}/{total_claims}] " if total_claims > 1 else ""
         queries = search_planner.build_queries(claim)
         process_log.setdefault("queries", {})[claim.claim_id] = queries
 
-        step("공식 자료 확인")
+        step(f"{prefix}공식 자료 확인")
         official_candidates = official_source_resolver.resolve_official_sources(claim, llm)
         process_log.setdefault("official_candidates", {})[claim.claim_id] = official_candidates
 
-        step("자료 검색")
+        step(f"{prefix}자료 검색")
         raw_evidences = evidence_search.collect_raw_results(
             claim,
             queries,
@@ -73,7 +75,7 @@ def run_pipeline(
             process_log,
         )
 
-        step("본문 수집")
+        step(f"{prefix}본문 수집")
         fetch_targets = raw_evidences[: limits["max_fetched_documents"]]
         docs = document_fetcher.fetch_documents([e.url for e in fetch_targets])
         fetched_ok = 0
@@ -98,14 +100,14 @@ def run_pipeline(
         relevant = relevance_filter.gemini_relevance_check(claim, relevant, llm)
         process_log.setdefault("relevance_excluded", {})[claim.claim_id] = pre_relevance_count - len(relevant)
 
-        step("중복·원출처 분석")
+        step(f"{prefix}중복·원출처 분석")
         relevant = deduplicator.deduplicate(relevant)
         edges = provenance_analyzer.analyze_provenance(relevant)
         all_edges.extend(edges)
 
         relevant = relevant[: limits["max_final_evidence"]]
 
-        step("교차검증")
+        step(f"{prefix}교차검증")
         claim_stances = stance_analyzer.analyze_stances(claim, relevant, llm)
 
         all_evidences.extend(relevant)
