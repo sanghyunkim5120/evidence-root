@@ -26,7 +26,7 @@ from . import (
 
 logger = logging.getLogger("evidence_root.services.analysis_pipeline")
 
-LIMITS = {"results_per_query": 10, "max_raw_results": 40, "max_fetched_documents": 20, "max_final_evidence": 8}
+LIMITS = {"results_per_query": 10, "max_raw_results": 40, "max_fetched_documents": 24, "max_final_evidence": 12}
 
 
 def run_pipeline(

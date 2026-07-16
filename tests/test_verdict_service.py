@@ -39,16 +39,27 @@ def test_without_comparison_estimate_falls_back_to_insufficient():
     assert verdict.status.value == "insufficient_evidence"
 
 
-def test_comparison_estimate_wins_over_noisy_own_evidence_conflict():
-    """비교 주장 자체를 검색했을 때 잡음 섞인 결과로 상충(source_conflict)이 높게 나와도, 훨씬 신뢰도
-    높은 '검증된 독립 근거 수 비교'가 명확한 차이를 보이면 그걸 최종 판정 기준으로 써야 한다."""
-    noisy_score = ClaimScore(
-        claim_id="C1", independent_support_count=1, independent_refute_count=1,
-        support_strength=0.5, refute_strength=0.5, source_conflict=0.5,
+def test_comparison_estimate_used_only_when_no_direct_evidence_found():
+    """비교 주장 자체를 검색했는데 아무 직접 근거도 못 찾았을 때만(독립 지지/반박 둘 다 0건) 근사
+    지표(검증된 독립 근거 수 비교)를 최종 판단 기준으로 쓴다."""
+    estimate = ComparisonEstimate(entity_a="늑구", count_a=8, entity_b="예비군", count_b=5, basis="검증된 독립 근거 수")
+    verdict = decide_verdict(_claim(), _empty_score(), estimate)
+    assert verdict.status.value == "partially_supported"
+
+
+def test_direct_evidence_overrides_comparison_estimate_when_both_available():
+    """비교 주장에 대해 실제로 검색된 직접 근거(예: "B가 A보다 더 관심받았다"를 다룬 기사)가 있으면,
+    근사 지표(근거 수 비교)보다 그 실제 자료를 우선해서 판정에 반영해야 한다."""
+    direct_evidence_score = ClaimScore(
+        claim_id="C1", independent_support_count=0, independent_refute_count=2,
+        support_strength=0.0, refute_strength=0.9, source_conflict=0.0,
     )
     estimate = ComparisonEstimate(entity_a="늑구", count_a=8, entity_b="예비군", count_b=5, basis="검증된 독립 근거 수")
-    verdict = decide_verdict(_claim(), noisy_score, estimate)
-    assert verdict.status.value == "partially_supported"
+    verdict = decide_verdict(_claim(), direct_evidence_score, estimate)
+    # 근사 지표는 "늑구가 더 관심받았다"를 지지하지만, 실제 자료가 이를 반박했으므로 반박 쪽으로 나와야 한다
+    assert verdict.status.value == "likely_false"
+    # 근사 지표도 참고 정보로는 계속 표시된다
+    assert any("언급량" in p or "근거 수" in p for p in verdict.confirmed_points)
 
 
 def _causal_claim():

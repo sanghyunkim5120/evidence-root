@@ -14,12 +14,14 @@ def decide_verdict(
     comparison_estimate: ComparisonEstimate | None = None,
     causal_assessment: CausalAssessment | None = None,
 ) -> ClaimVerdict:
+    has_direct_evidence = score.independent_support_count > 0 or score.independent_refute_count > 0
+
     if claim.checkability in (Checkability.opinion, Checkability.unverifiable):
         status = VerdictStatus.unverifiable
-    elif comparison_estimate is not None:
-        # 비교 주장은 "더 많은 관심을 받았다" 류라 비교 주장 자체에 대한 일반 검색 결과는 잡음이 많고
-        # (양쪽 이야기가 섞여 상충으로 보이기 쉽다), 그보다 훨씬 신뢰도 높은 "검증된 독립 근거 수 비교"가
-        # 있으면 그걸 우선한다. 즉 비교 주장은 근거 검색 잡음보다 이 수치를 최종 판단 기준으로 삼는다.
+    elif comparison_estimate is not None and not has_direct_evidence:
+        # 비교 주장 자체를 검색했는데 직접적인 근거(예: "A가 B보다 관심받았다"를 실제로 다룬 기사)를
+        # 하나도 못 찾았을 때만 "검증된 독립 근거 수 비교"(근사 지표)로 대체한다. 직접 근거가 있으면
+        # 그걸 무시하고 근사치를 쓰지 않는다 — 실제 자료가 근사치보다 항상 우선한다.
         if comparison_estimate.count_a > comparison_estimate.count_b * _COMPARISON_MARGIN:
             status = VerdictStatus.partially_supported
         elif comparison_estimate.count_b > comparison_estimate.count_a * _COMPARISON_MARGIN:
