@@ -14,20 +14,8 @@ def decide_verdict(
     comparison_estimate: ComparisonEstimate | None = None,
     causal_assessment: CausalAssessment | None = None,
 ) -> ClaimVerdict:
-    has_direct_evidence = score.independent_support_count > 0 or score.independent_refute_count > 0
-
     if claim.checkability in (Checkability.opinion, Checkability.unverifiable):
         status = VerdictStatus.unverifiable
-    elif comparison_estimate is not None and not has_direct_evidence:
-        # 비교 주장 자체를 검색했는데 직접적인 근거(예: "A가 B보다 관심받았다"를 실제로 다룬 기사)를
-        # 하나도 못 찾았을 때만 "검증된 독립 근거 수 비교"(근사 지표)로 대체한다. 직접 근거가 있으면
-        # 그걸 무시하고 근사치를 쓰지 않는다 — 실제 자료가 근사치보다 항상 우선한다.
-        if comparison_estimate.count_a > comparison_estimate.count_b * _COMPARISON_MARGIN:
-            status = VerdictStatus.partially_supported
-        elif comparison_estimate.count_b > comparison_estimate.count_a * _COMPARISON_MARGIN:
-            status = VerdictStatus.likely_false
-        else:
-            status = VerdictStatus.mixed
     elif score.independent_support_count == 0 and score.independent_refute_count == 0:
         status = VerdictStatus.insufficient_evidence
     elif score.source_conflict >= 0.4:
@@ -44,6 +32,18 @@ def decide_verdict(
         status = VerdictStatus.partially_supported
     else:
         status = VerdictStatus.insufficient_evidence
+
+    # 직접 근거가 약하거나(강도 낮은 지지 1건 등) 아예 없어서 'insufficient_evidence'로 남았다면,
+    # 검증된 독립 근거 수 비교(근사 지표)가 뚜렷한 격차를 보일 때 이를 최종 판정에 반영한다. 직접
+    # 근거만으로 이미 명확한 결론(likely_true 이상, likely_false 이하 등)이 났다면 근사치로 덮어쓰지 않는다
+    # — 실제 자료가 근사치보다 항상 우선한다.
+    if comparison_estimate is not None and status == VerdictStatus.insufficient_evidence:
+        if comparison_estimate.count_a > comparison_estimate.count_b * _COMPARISON_MARGIN:
+            status = VerdictStatus.partially_supported
+        elif comparison_estimate.count_b > comparison_estimate.count_a * _COMPARISON_MARGIN:
+            status = VerdictStatus.likely_false
+        else:
+            status = VerdictStatus.mixed
 
     # 인과관계 주장은 기사에서 직접 확인되는 경우가 드물어, 뉴스 근거가 부족하면 전제 사실을 바탕으로 한
     # LLM 해석으로 보완한다. 이는 새로운 사실 확인이 아니라 해석이므로 evidence-based 판정을 대체하지

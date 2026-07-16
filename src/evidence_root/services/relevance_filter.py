@@ -63,11 +63,13 @@ BATCH_PROMPT_TEMPLATE = """다음 주장과 자료 목록을 보고 각 자료�
 
 
 def gemini_relevance_check(claim: Claim, evidences: list[Evidence], gemini: TextLLMProvider) -> list[Evidence]:
-    """2차 LLM 평가. 미설정 시 1차 필터 결과를 그대로 통과시킨다.
+    """2차 LLM 평가. 미설정 시, 또는 이 항목에 대한 평가를 못 받았을 때는 1차 필터의 판단(통과)을
+    신뢰한다.
 
-    분당 토큰 한도(TPM)를 넘기지 않도록 작은 묶음으로 나눠 보낸다. 평가 자체가 실패했거나(잘리거나
-    API 오류) 응답이 부분적으로만 복구된 자료는 무관한 것을 실수로 통과시키는 쪽보다 안전하게
-    제외하는 쪽을 택한다 — 이미 1차 필터를 통과한 자료라 완전히 근거가 사라지진 않는다.
+    한때는 평가에 실패한 자료를 전부 제외했는데, 1차 필터(TF-IDF+키워드 과반수 일치)가 이미 꽤
+    정확한 상태에서 API가 자주 실패/응답잘림(rate limit)이 나는 날엔 오히려 진짜 관련 있는 자료까지
+    싹 다 "근거 부족"으로 날려버리는 부작용이 더 컸다. 그래서 2차 평가가 명확히 "관련 없음"이라고
+    응답한 자료만 제외하고, 평가 자체를 못 받은 자료는 1차 필터 통과 상태를 그대로 유지한다.
     """
     if not gemini.is_configured() or not evidences:
         return evidences
@@ -80,16 +82,11 @@ def gemini_relevance_check(claim: Claim, evidences: list[Evidence], gemini: Text
             f"id: {e.evidence_id}\n제목: {e.title}\n내용: {(e.body_text or e.snippet)[:400]}" for e in chunk
         )
         raw = gemini.generate_json(BATCH_PROMPT_TEMPLATE.format(claim_text=claim.claim_text, items=items))
-        # 평가 자체가 실패했거나(raw가 리스트가 아님) 응답이 잘려서 이 묶음 중 일부만 salvage된 경우,
-        # 평가받지 못한 자료를 "기본 통과"시키면 안 된다 — 청크 전체를 우선 제외로 채워두고, 실제로
-        # relevant:true라고 명시된 항목만 다시 덮어쓴다.
-        for e in chunk:
-            relevant_map[e.evidence_id] = False
         if isinstance(raw, list):
             for item in raw:
                 if isinstance(item, dict) and item.get("id"):
                     relevant_map[item["id"]] = item.get("relevant", True)
         else:
-            logger.warning("관련성 평가 실패로 %d개 자료 제외", len(chunk))
+            logger.warning("관련성 평가 실패, 이 묶음(%d개)은 1차 필터 결과를 그대로 유지", len(chunk))
 
     return [e for e in evidences if relevant_map.get(e.evidence_id, True) is not False]
