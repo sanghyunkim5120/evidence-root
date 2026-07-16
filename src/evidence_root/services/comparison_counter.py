@@ -55,13 +55,22 @@ def estimate_comparison(
 
 
 def _find_sibling_claim(entity: str, claims: list[Claim], exclude_id: str) -> Claim | None:
+    """entity(예: "늑구 탈출")가 형제 주장 문장에 토씨 하나 안 틀리고 그대로 들어있는 경우만 찾으면,
+    한국어 조사("늑구가", "늑구는" 등)나 어순 차이 때문에 거의 항상 매칭에 실패한다. 대신 entity를
+    단어 단위로 쪼개서 각 단어가 부분 문자열로 등장하는지 세고, 가장 많이 겹치는 형제 주장을 고른다."""
+    entity_words = [w for w in entity.split() if len(w) >= 2] or [entity]
+
+    best_claim: Claim | None = None
+    best_score = 0
     for c in claims:
         if c.claim_id == exclude_id or c.claim_type == "comparison":
             continue
         haystack = " ".join([c.claim_text, *c.entities, *c.keywords])
-        if entity and entity in haystack:
-            return c
-    return None
+        score = sum(1 for w in entity_words if w in haystack)
+        if score > best_score:
+            best_score = score
+            best_claim = c
+    return best_claim
 
 
 def estimate_comparison_from_evidence(

@@ -82,6 +82,34 @@ def test_estimate_comparison_from_evidence_uses_sibling_independent_counts():
     assert result.basis == "검증된 독립 근거 수"
 
 
+def test_estimate_comparison_from_evidence_matches_despite_korean_particles():
+    """entity가 "늑구 탈출"이어도, 형제 주장 문장엔 조사가 붙어 "늑구가 ... 탈출한 사건이 있었다"처럼
+    나온다 — 토씨 하나 안 틀리는 완전 일치가 아니라 단어 단위 부분 일치로 찾아야 한다."""
+    comparison_claim = Claim(
+        claim_id="C3", claim_text="늑구 탈출이 예비군 사망사건보다 더 관심받았다", claim_type="comparison",
+        checkability="partially_checkable", entities=["늑구 탈출", "예비군 사망사건"],
+    )
+    wolf_claim = Claim(
+        claim_id="C1", claim_text="늑구가 동물원에서 탈출한 사건이 실제로 있었다",
+        claim_type="event", checkability="checkable",
+    )
+    reservist_claim = Claim(
+        claim_id="C2", claim_text="예비군이 훈련 도중 사망한 사건이 실제로 있었다",
+        claim_type="event", checkability="checkable",
+    )
+    claims = [comparison_claim, wolf_claim, reservist_claim]
+
+    evidence_by_claim_id = {
+        "C1": [_evidence(1, "C1", "cluster-a"), _evidence(2, "C1", "cluster-b"), _evidence(3, "C1", "cluster-c")],
+        "C2": [_evidence(4, "C2", "cluster-d")],
+    }
+
+    result = estimate_comparison_from_evidence(comparison_claim, claims, evidence_by_claim_id)
+    assert result is not None
+    assert result.count_a == 3
+    assert result.count_b == 1
+
+
 def test_estimate_comparison_from_evidence_returns_none_without_sibling_claims():
     comparison_claim = Claim(
         claim_id="C1", claim_text="A가 B보다 더 관심받았다", claim_type="comparison",
