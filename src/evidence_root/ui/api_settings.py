@@ -8,7 +8,6 @@ from ..provider_registry import get_registry
 from ..security.secret_store import mask_key
 
 _PROVIDER_KEY_MAP = {
-    "GEMINI_API_KEY": "gemini",
     "NAVER_CLIENT_ID": "naver_news",
     "NAVER_CLIENT_SECRET": "naver_news",
     "GROQ_API_KEY": "groq",
@@ -16,12 +15,10 @@ _PROVIDER_KEY_MAP = {
 }
 
 _PURPOSE = {
-    "GROQ_API_KEY": "주장 분해, 관련성 평가, 지지/반박 분석, 요약·후속질문 생성, 이미지 OCR까지 전 구간에 사용 (무료 한도 넉넉함)",
+    "GROQ_API_KEY": "주장 분해, 관련성 평가, 지지/반박 분석, 요약·후속질문 생성까지 전 구간에 사용",
     "GROQ_MODEL": "사용할 Groq 모델명 (예: llama-3.1-8b-instant, 비워두면 자동 선택)",
     "NAVER_CLIENT_ID": "네이버 뉴스/웹/블로그 검색에 사용",
     "NAVER_CLIENT_SECRET": "네이버 뉴스/웹/블로그 검색에 사용",
-    "GEMINI_API_KEY": "선택 사항. Groq 미설정 시에만 이미지 OCR 대체용으로 사용",
-    "GEMINI_MODEL": "사용할 Gemini 모델명 (예: gemini-flash-latest)",
     "GOOGLE_FACTCHECK_API_KEY": "기존 팩트체크 자료 검색(선택)",
 }
 
@@ -98,8 +95,8 @@ def _render_key_card(name: str, required: bool, allow_write: bool) -> None:
                     st.info("현재 세션에는 적용되었지만 서버 재시작 후에는 유지되지 않을 수 있습니다. Streamlit Cloud Secrets에 등록하면 계속 사용할 수 있습니다.")
                 st.rerun()
 
-        if name == "GEMINI_MODEL":
-            st.caption(f"현재 값: {current or '(미설정, 기본값 gemini-2.0-flash 사용)'}")
+        if name == "GROQ_MODEL":
+            st.caption(f"현재 값: {current or '(미설정, 기본값 llama-3.1-8b-instant 사용)'}")
 
 
 def _run_connection_test(name: str, value: str | None) -> None:

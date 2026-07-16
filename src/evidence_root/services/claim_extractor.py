@@ -5,7 +5,7 @@ import logging
 
 from pydantic import ValidationError
 
-from ..providers.gemini_provider import GeminiProvider
+from ..providers.base import TextLLMProvider
 from ..schemas import Checkability, Claim, ClaimType
 
 logger = logging.getLogger("evidence_root.services.claim_extractor")
@@ -65,11 +65,11 @@ claim_id는 C1, C2, C3 순서로 부여하라. 반드시 JSON 배열만 출력�
 """
 
 
-def extract_claims(input_text: str, gemini: GeminiProvider, max_claims: int = 3) -> list[Claim]:
+def extract_claims(input_text: str, gemini: TextLLMProvider, max_claims: int = 3) -> list[Claim]:
     if not input_text.strip():
         return []
     if not gemini.is_configured():
-        logger.warning("Gemini 미설정 - 주장 추출 불가")
+        logger.warning("LLM 미설정 - 주장 추출 불가")
         return []
 
     raw = gemini.generate_json(PROMPT_TEMPLATE.format(input_text=input_text[:6000]))
@@ -103,7 +103,7 @@ def _parse_claims(raw) -> list[Claim]:
         if not isinstance(item, dict):
             continue
         item.setdefault("claim_id", f"C{idx + 1}")
-        # Gemini가 claim_type/checkability 값을 서로 뒤바꿔 넣는 경우가 있어 방어적으로 보정한다.
+        # LLM이 claim_type/checkability 값을 서로 뒤바꿔 넣는 경우가 있어 방어적으로 보정한다.
         if item.get("claim_type") not in {t.value for t in ClaimType}:
             item["claim_type"] = "other"
         if item.get("checkability") not in {c.value for c in Checkability}:

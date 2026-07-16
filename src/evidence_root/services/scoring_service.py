@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from ..schemas import Claim, ClaimScore, Evidence, Stance, StanceResult
-from ..utils.date_parsing import recency_weight
+from ..utils.date_parsing import parse_published_at, recency_weight
 
 _CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "scoring.yaml"
 _config_cache: dict | None = None
@@ -26,6 +26,8 @@ def compute_score(claim: Claim, evidences: list[Evidence], stances: list[StanceR
 
     evidence_by_id = {e.evidence_id: e for e in evidences}
     claim_stances = [s for s in stances if s.claim_id == claim.claim_id]
+    # 주장에서 뽑힌 날짜(예: "2026년 3월")가 있으면, 최신성은 "오늘 기준"이 아니라 "이 사건 시점 기준"으로 계산한다.
+    event_date = next((d for d in (parse_published_at(raw) for raw in claim.dates) if d is not None), None)
 
     cluster_seen: dict[str, int] = {}
     support_strength = 0.0
@@ -42,7 +44,7 @@ def compute_score(claim: Claim, evidences: list[Evidence], stances: list[StanceR
         occurrence = cluster_seen.get(cluster_id, 0)
         cluster_seen[cluster_id] = occurrence + 1
         independence_factor = decay**occurrence
-        recency_factor = recency_weight(evidence.published_at)
+        recency_factor = recency_weight(evidence.published_at, event_date=event_date)
         contribution = base_weight * s.confidence * independence_factor * recency_factor
 
         if s.stance == Stance.support:

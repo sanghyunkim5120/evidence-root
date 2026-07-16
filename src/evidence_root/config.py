@@ -19,15 +19,11 @@ load_dotenv(BASE_DIR / ".env", override=False)
 REQUIRED_KEYS = ["GROQ_API_KEY", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET"]
 OPTIONAL_KEYS = [
     "GROQ_MODEL",
-    "GEMINI_API_KEY",
-    "GEMINI_MODEL",
     "GOOGLE_FACTCHECK_API_KEY",
 ]
 ALL_KEYS = REQUIRED_KEYS + OPTIONAL_KEYS
 
 KEY_LABELS = {
-    "GEMINI_API_KEY": "Gemini API Key",
-    "GEMINI_MODEL": "Gemini 모델명",
     "NAVER_CLIENT_ID": "Naver Client ID",
     "NAVER_CLIENT_SECRET": "Naver Client Secret",
     "GROQ_API_KEY": "Groq API Key",

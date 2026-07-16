@@ -1,5 +1,4 @@
 from .base import ConnectionTestResult, RawSearchResult, TextLLMProvider
-from .gemini_provider import GeminiProvider
 from .google_factcheck_provider import GoogleFactCheckProvider
 from .groq_provider import GroqProvider
 from .naver_blog_provider import NaverBlogSearchProvider
@@ -11,7 +10,6 @@ __all__ = [
     "ConnectionTestResult",
     "RawSearchResult",
     "TextLLMProvider",
-    "GeminiProvider",
     "GroqProvider",
     "NaverNewsSearchProvider",
     "NaverWebSearchProvider",

@@ -1,9 +1,9 @@
-"""관련성 필터링: 1차 TF-IDF/RapidFuzz/키워드 일치, 2차 Gemini 평가 (스펙 14장)."""
+"""관련성 필터링: 1차 TF-IDF/RapidFuzz/키워드 일치, 2차 LLM 평가 (스펙 14장)."""
 from __future__ import annotations
 
 import logging
 
-from ..providers.gemini_provider import GeminiProvider
+from ..providers.base import TextLLMProvider
 from ..schemas import Claim, Evidence
 
 logger = logging.getLogger("evidence_root.services.relevance_filter")
@@ -62,8 +62,8 @@ BATCH_PROMPT_TEMPLATE = """다음 주장과 자료 목록을 보고 각 자료�
 """
 
 
-def gemini_relevance_check(claim: Claim, evidences: list[Evidence], gemini: GeminiProvider) -> list[Evidence]:
-    """2차 Gemini 평가. 미설정 시 1차 필터 결과를 그대로 통과시킨다.
+def gemini_relevance_check(claim: Claim, evidences: list[Evidence], gemini: TextLLMProvider) -> list[Evidence]:
+    """2차 LLM 평가. 미설정 시 1차 필터 결과를 그대로 통과시킨다.
 
     분당 토큰 한도(TPM)를 넘기지 않도록 작은 묶음으로 나눠 보낸다. 평가 자체가 실패한(잘리거나 API
     오류) 자료는 무관한 것을 실수로 통과시키는 쪽보다 안전하게 제외하는 쪽을 택한다 — 이미 1차 필터를

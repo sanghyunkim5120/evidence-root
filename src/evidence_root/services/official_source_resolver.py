@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from ..providers.gemini_provider import GeminiProvider
+from ..providers.base import TextLLMProvider
 from ..schemas import Claim
 
 logger = logging.getLogger("evidence_root.services.official_source_resolver")
@@ -20,7 +20,7 @@ JSON 배열로만 출력: [{{"organization": "기관명", "category": "분류", 
 """
 
 
-def resolve_official_sources(claim: Claim, gemini: GeminiProvider) -> list[dict]:
+def resolve_official_sources(claim: Claim, gemini: TextLLMProvider) -> list[dict]:
     if not gemini.is_configured():
         return []
     raw = gemini.generate_json(

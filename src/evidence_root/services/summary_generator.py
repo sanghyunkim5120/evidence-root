@@ -1,7 +1,7 @@
 """전체 판정을 종합한 요약을 생성한다."""
 from __future__ import annotations
 
-from ..providers.gemini_provider import GeminiProvider
+from ..providers.base import TextLLMProvider
 from ..schemas import ClaimVerdict
 
 PROMPT_TEMPLATE = """다음은 한 게시물/기사에서 추출한 주장들의 검증 결과다. 사용자에게 보여줄 종합 설명을 3~5문장으로
@@ -12,7 +12,7 @@ PROMPT_TEMPLATE = """다음은 한 게시물/기사에서 추출한 주장들의
 """
 
 
-def generate_summary(verdicts: list[ClaimVerdict], gemini: GeminiProvider) -> str:
+def generate_summary(verdicts: list[ClaimVerdict], gemini: TextLLMProvider) -> str:
     if not verdicts:
         return "분석할 주장을 찾지 못했습니다."
 
@@ -23,7 +23,7 @@ def generate_summary(verdicts: list[ClaimVerdict], gemini: GeminiProvider) -> st
 
     if not gemini.is_configured():
         return (
-            "Gemini 미설정으로 자동 요약을 생성할 수 없습니다. 아래 각 주장별 판정을 참고하세요.\n" + lines
+            "LLM 미설정으로 자동 요약을 생성할 수 없습니다. 아래 각 주장별 판정을 참고하세요.\n" + lines
         )
 
     text = gemini.generate_text(PROMPT_TEMPLATE.format(verdict_lines=lines))

@@ -5,7 +5,6 @@ import hashlib
 
 from . import config
 from .providers import (
-    GeminiProvider,
     GoogleFactCheckProvider,
     GroqProvider,
     NaverBlogSearchProvider,
@@ -30,7 +29,6 @@ class ProviderRegistry:
         if current != self._fingerprint:
             self._fingerprint = current
             self._providers = {
-                "gemini": GeminiProvider(),
                 "groq": GroqProvider(),
                 "naver_news": NaverNewsSearchProvider(),
                 "naver_web": NaverWebSearchProvider(),
@@ -44,12 +42,9 @@ class ProviderRegistry:
         return self._providers[name]
 
     def text_llm(self):
-        """텍스트 분석(주장 추출/관련성/지지반박/요약/후속질문)에 사용할 LLM. Groq가 설정되어 있으면 우선 사용한다."""
+        """텍스트 분석(주장 추출/관련성/지지반박/요약/후속질문)에 사용할 LLM."""
         self._ensure_fresh()
-        groq = self._providers["groq"]
-        if groq.is_configured():
-            return groq
-        return self._providers["gemini"]
+        return self._providers["groq"]
 
     def search_providers(self) -> list:
         self._ensure_fresh()

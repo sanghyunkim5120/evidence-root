@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 
-from ..providers.gemini_provider import GeminiProvider
+from ..providers.base import TextLLMProvider
 from ..schemas import Claim, Evidence, Stance, StanceResult
 from ..utils.quote_verifier import quote_exists_in_text
 
@@ -91,7 +91,7 @@ def _build_result(claim: Claim, evidence: Evidence, raw: dict | None, source_tex
     )
 
 
-def analyze_stance(claim: Claim, evidence: Evidence, gemini: GeminiProvider) -> StanceResult:
+def analyze_stance(claim: Claim, evidence: Evidence, gemini: TextLLMProvider) -> StanceResult:
     """단일 근거에 대한 stance 분석 (테스트/소규모 호출용). 대량 처리에는 analyze_stances를 사용한다."""
     source_text = evidence.body_text or evidence.snippet
     if not gemini.is_configured() or not source_text:
@@ -100,8 +100,8 @@ def analyze_stance(claim: Claim, evidence: Evidence, gemini: GeminiProvider) -> 
             evidence_id=evidence.evidence_id,
             stance=Stance.insufficient,
             confidence=0.0,
-            reason="분석에 필요한 본문 또는 Gemini 설정이 부족합니다.",
-            limitations=["본문 미확보" if not source_text else "Gemini 미설정"],
+            reason="분석에 필요한 본문 또는 LLM 설정이 부족합니다.",
+            limitations=["본문 미확보" if not source_text else "LLM 미설정"],
         )
 
     raw = gemini.generate_json(
@@ -110,8 +110,8 @@ def analyze_stance(claim: Claim, evidence: Evidence, gemini: GeminiProvider) -> 
     return _build_result(claim, evidence, raw, source_text)
 
 
-def analyze_stances(claim: Claim, evidences: list[Evidence], gemini: GeminiProvider) -> list[StanceResult]:
-    """한 주장에 속한 근거 여러 개를 한 번의 Gemini 요청으로 묶어 분석한다 (API 호출 횟수 절감)."""
+def analyze_stances(claim: Claim, evidences: list[Evidence], gemini: TextLLMProvider) -> list[StanceResult]:
+    """한 주장에 속한 근거 여러 개를 한 번의 LLM 요청으로 묶어 분석한다 (API 호출 횟수 절감)."""
     if not evidences:
         return []
 
@@ -140,8 +140,8 @@ def analyze_stances(claim: Claim, evidences: list[Evidence], gemini: GeminiProvi
                 evidence_id=e.evidence_id,
                 stance=Stance.insufficient,
                 confidence=0.0,
-                reason="Gemini가 설정되지 않았습니다.",
-                limitations=["Gemini 미설정"],
+                reason="LLM이 설정되지 않았습니다.",
+                limitations=["LLM 미설정"],
             )
             for e in usable
         )

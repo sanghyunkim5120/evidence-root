@@ -1,7 +1,7 @@
 """후속 질문 정확히 3개를 생성한다 (스펙 19장). 근거 부족/상충/누락 통계·기간·비교 맥락을 우선한다."""
 from __future__ import annotations
 
-from ..providers.gemini_provider import GeminiProvider
+from ..providers.base import TextLLMProvider
 from ..schemas import ClaimVerdict
 
 PROMPT_TEMPLATE = """아래 판정 결과를 참고해서 사용자가 이어서 물어볼 만한 후속 질문을 정확히 3개 만들어라.
@@ -13,7 +13,7 @@ JSON 배열로만 응답: ["질문1", "질문2", "질문3"]
 """
 
 
-def generate_followups(verdicts: list[ClaimVerdict], gemini: GeminiProvider) -> list[str]:
+def generate_followups(verdicts: list[ClaimVerdict], gemini: TextLLMProvider) -> list[str]:
     fallback = _fallback_questions(verdicts)
     if not gemini.is_configured():
         return fallback
